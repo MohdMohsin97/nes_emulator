@@ -13,6 +13,31 @@ pub enum AddressingMode {
     NoneAddressing,
 }
 
+
+struct OpCode<'a> {
+    code: u8,
+    name: &'a str,
+    bytes: u8,
+    cycle: u8,
+    mode: AddressingMode,
+}
+
+impl<'a> OpCode<'_>{
+    fn new(code: u8, name: &'a str, bytes: u8, cycle: u8, mode: AddressingMode) -> OpCode {
+        OpCode {
+            code,
+            name, 
+            bytes,
+            cycle,
+            mode
+        }
+    }
+}
+
+// pub static ref CPU_OPS_CODES: Vec<OpCode> = vec![
+//     OpCode::new(0x00, "BRK", 1, 7, AddressingMode::NoneAddressing),
+// ];
+
 pub struct CPU {
     pub registor_a: u8,
     pub registor_x: u8,
@@ -81,6 +106,7 @@ impl CPU {
             self.program_counter += 1;
 
             match opscode {
+                /* LDA */
                 0xA9 => {
                     self.lda(&AddressingMode::Immediate);
                     self.program_counter += 1;
@@ -113,6 +139,7 @@ impl CPU {
                     self.lda(&AddressingMode::Immediate);
                     self.program_counter += 1;
                 }
+                /* STA */
                 0xAA => self.tax(),
                 0xE8 => self.inx(),
                 0x00 => return,
@@ -249,5 +276,9 @@ mod test {
     fn test_lda_from_memory() {
         let mut cpu = CPU::new();
         cpu.mem_write(0x10, 0x55);
+
+        cpu.load_and_run(vec![0xa5, 0x10, 0x00]);
+
+        assert_eq!(cpu.registor_a, 0x55);
     }
 }
