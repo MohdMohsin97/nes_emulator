@@ -1,4 +1,4 @@
-use bitflags::bitflags;
+use bitflags::{bitflags, Flags};
 use std::collections::HashMap;
 
 use crate::opcodes;
@@ -24,7 +24,7 @@ bitflags! {
         const BREAK             = 0b00010000;
         const BREAK2            = 0b00100000;
         const OVERFLOW          = 0b01000000;
-        const NEGATIVE          = 0b10000000;    
+        const NEGATIVE          = 0b10000000;
     }
 }
 
@@ -180,6 +180,12 @@ impl CPU {
                 .expect(&format!("OpCode {:x} is not recognised", code));
 
             match code {
+                /* ADC */
+                0x69 | 0x65 | 0x75 | 0x6d | 0x7d | 0x79 | 0x61 | 0x71 => {
+                    self.adc(&opcode.mode);
+                }
+                /* AND */
+                0x29 | 0x25 | 0x35 | 0x2d | 0x3d | 0x39 | 0x21 | 0x31 => self.and(&opcode.mode),
                 /* LDA */
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
                     self.lda(&opcode.mode);
@@ -188,10 +194,12 @@ impl CPU {
                 0x85 | 0x95 | 0x8d | 0x9d | 0x99 | 0x81 | 0x91 => {
                     self.sta(&opcode.mode);
                 }
-
-                /* ADC */
-                0x69 | 0x65 | 0x75 | 0x6d | 0x7d | 0x79 | 0x61 | 0x71 => {
-                    self.adc(&opcode.mode);
+                /* ASL */
+                0x0a => {
+                    self.asl_accumulator();
+                }
+                0x06 | 0x16 | 0x0e | 0x1e => {
+                    self.asl(&opcode.mode);
                 }
 
                 0xaa => self.tax(),
@@ -212,6 +220,49 @@ impl CPU {
         let value = self.mem_read(addr);
         self.add_to_register_a(value);
     }
+
+    fn and(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.set_register_a(self.register_a & value);
+    }
+
+    fn asl_accumulator(&mut self) {
+        let  mut value = self.register_a;
+        if value << 7 == 1 {
+            self.set_carry_flag();
+        } else {
+            self.clear_carry_flag();
+        }
+
+        value = value << 1;
+        self.set_register_a(value);
+    }   
+
+    fn asl(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let mut value = self.mem_read(addr);
+
+        if value << 7 == 1 {
+            self.set_carry_flag();
+        } else {
+            self.clear_carry_flag();
+        }
+
+        value = value << 1;
+
+        self.mem_write(addr, value);
+        self.update_zero_and_negative_flags(value);
+    }
+
+    // fn bcc(&mut self) -> u16 {
+    //     let value = self.mem_read(self.program_counter);
+    //     if !self.status.contains(CpuFlags::CARRY) {
+    //         value as u16
+    //     } else {
+    //         1
+    //     }
+    // }
 
     fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
@@ -248,26 +299,34 @@ impl CPU {
         }
     }
 
-    fn set_register_a(&mut self,  value: u8) {
+    fn set_carry_flag(&mut self) {
+        self.status.insert(CpuFlags::CARRY);
+    }
+
+    fn clear_carry_flag(&mut self) {
+        self.status.remove(CpuFlags::CARRY);
+    }
+
+    fn set_register_a(&mut self, value: u8) {
         self.register_a = value;
         self.update_zero_and_negative_flags(self.register_a);
     }
 
     fn add_to_register_a(&mut self, data: u8) {
-        let sum = self.register_a as u16 + data as u16 + (
-            if self.status.contains(CpuFlags::CARRY) {
+        let sum = self.register_a as u16
+            + data as u16
+            + (if self.status.contains(CpuFlags::CARRY) {
                 1
             } else {
                 0
-            }
-        );
+            });
 
         let carry = sum > 0xff;
 
         if carry {
-            self.status.insert(CpuFlags::CARRY);
+            self.set_carry_flag();
         } else {
-            self.status.remove(CpuFlags::CARRY);
+            self.clear_carry_flag();
         }
 
         let result = sum as u8;
@@ -279,12 +338,12 @@ impl CPU {
         }
 
         self.set_register_a(result);
-
     }
 }
 
 #[cfg(test)]
 mod test {
+
     use bitflags::Flags;
 
     use super::*;
@@ -342,10 +401,27 @@ mod test {
     fn test_0x69_adc_add_to_a() {
         let mut cpu = CPU::new();
 
-        cpu.load_and_run(vec![0xa9, 0x50,0x69, 0x50, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0x80, 0x69, 0x80, 0x00]);
 
-        assert_eq!(cpu.register_a, 0xa0);
-        assert_eq!(cpu.status.bits() & 0b0100_0000, 0b0100_0000);
-        assert_eq!(cpu.status.bits() & 0b0000_0001, 0b0);
+        assert_eq!(cpu.register_a, 0x00);
+        assert_eq!(cpu.status.bits() & 0b0100_0000, 0b0100_0000); // OVERFLOW
+        assert_eq!(cpu.status.bits() & 0b0000_0001, 0b1); // CARRY
+    }
+
+    #[test]
+    fn test_0x29_and() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x80, 0x29, 0x80, 0x00]);
+
+        assert_eq!(cpu.register_a, 0x80);
+    }
+
+    #[test]
+    fn test_0x0a_asl_shift_a() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x80, 0x0a, 0x00]);
+
+        assert_eq!(cpu.register_a, 0x00);
+        assert_eq!(cpu.status.bits() & 0b1, 0);
     }
 }
