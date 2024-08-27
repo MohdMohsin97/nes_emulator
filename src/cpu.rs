@@ -202,6 +202,50 @@ impl CPU {
                     self.asl(&opcode.mode);
                 }
 
+                /* BPL */
+                0x10 => {
+                    self.branch(!self.status.contains(CpuFlags::NEGATIVE));
+                }
+
+                /* BMI */
+                0x30 => {
+                    self.branch(self.status.contains(CpuFlags::NEGATIVE));
+                }
+
+                /* BVC */
+                0x50 => {
+                    self.branch(!self.status.contains(CpuFlags::OVERFLOW));
+                }
+
+                /* BVS */
+                0x70 => {
+                    self.branch(self.status.contains(CpuFlags::OVERFLOW));
+
+                }
+
+                /* BCC */
+                0x90 => {
+                    self.branch(!self.status.contains(CpuFlags::CARRY));
+                }
+
+                /* BCS */
+                0xb0 => {
+                    self.branch(self.status.contains(CpuFlags::CARRY));
+
+                }
+
+                /* BNE */
+                0xd0 => {
+                    self.branch(!self.status.contains(CpuFlags::ZERO));
+
+                }
+
+                /* BEQ */
+                0xf0 => {
+                    self.branch(self.status.contains(CpuFlags::ZERO));
+
+                }
+
                 0xaa => self.tax(),
                 0xe8 => self.inx(),
                 0x00 => return,
@@ -255,14 +299,18 @@ impl CPU {
         self.update_zero_and_negative_flags(value);
     }
 
-    // fn bcc(&mut self) -> u16 {
-    //     let value = self.mem_read(self.program_counter);
-    //     if !self.status.contains(CpuFlags::CARRY) {
-    //         value as u16
-    //     } else {
-    //         1
-    //     }
-    // }
+    fn branch(&mut self, condition: bool) {
+        if condition {
+            let value = self.mem_read(self.program_counter) as i8;
+            let jump_addr = self
+                            .program_counter
+                            .wrapping_add(1)
+                            .wrapping_add(value as u16);
+
+            self.program_counter = jump_addr;
+        }
+
+    }
 
     fn lda(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
