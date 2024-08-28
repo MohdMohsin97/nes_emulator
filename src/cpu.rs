@@ -249,6 +249,11 @@ impl CPU {
 
                 /* CLC */ 0x18 => self.clear_carry_flag(),
 
+                /* CLD */ 0xd8 => self.status.remove(CpuFlags::DECIMAL_MODE),
+
+                /* CLI */ 0x58 => self.status.remove(CpuFlags::INTERRUPT_DISABLE),
+                
+                /* CLV */ 0xb8 => self.status.remove(CpuFlags::OVERFLOW),
 
 
                 0xaa => self.tax(),
@@ -494,5 +499,13 @@ mod test {
         assert!(!cpu.status.contains(CpuFlags::ZERO));
         assert!(cpu.status.contains(CpuFlags::NEGATIVE));
         assert!(!cpu.status.contains(CpuFlags::OVERFLOW));
+    }
+
+    #[test]
+    fn test_0x18_clc_clear_carry_flag() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x80, 0x0a, 0x18, 0x00]);
+
+        assert!(!cpu.status.contains(CpuFlags::CARRY)); // CARRY
     }
 }
