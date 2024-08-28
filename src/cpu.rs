@@ -220,7 +220,6 @@ impl CPU {
                 /* BVS */
                 0x70 => {
                     self.branch(self.status.contains(CpuFlags::OVERFLOW));
-
                 }
 
                 /* BCC */
@@ -231,20 +230,26 @@ impl CPU {
                 /* BCS */
                 0xb0 => {
                     self.branch(self.status.contains(CpuFlags::CARRY));
-
                 }
 
                 /* BNE */
                 0xd0 => {
                     self.branch(!self.status.contains(CpuFlags::ZERO));
-
                 }
 
                 /* BEQ */
                 0xf0 => {
                     self.branch(self.status.contains(CpuFlags::ZERO));
-
                 }
+
+                /* BIT */
+                0x24 | 0x2c => {
+                    self.bit(&opcode.mode);
+                }
+
+                /* CLC */ 0x18 => self.clear_carry_flag(),
+
+
 
                 0xaa => self.tax(),
                 0xe8 => self.inx(),
@@ -272,8 +277,8 @@ impl CPU {
     }
 
     fn asl_accumulator(&mut self) {
-        let  mut value = self.register_a;
-        if value << 7 == 1 {
+        let mut value = self.register_a;
+        if value >> 7 == 1 {
             self.set_carry_flag();
         } else {
             self.clear_carry_flag();
@@ -281,13 +286,13 @@ impl CPU {
 
         value = value << 1;
         self.set_register_a(value);
-    }   
+    }
 
     fn asl(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let mut value = self.mem_read(addr);
 
-        if value << 7 == 1 {
+        if value >> 7 == 1 {
             self.set_carry_flag();
         } else {
             self.clear_carry_flag();
@@ -303,13 +308,23 @@ impl CPU {
         if condition {
             let value = self.mem_read(self.program_counter) as i8;
             let jump_addr = self
-                            .program_counter
-                            .wrapping_add(1)
-                            .wrapping_add(value as u16);
+                .program_counter
+                .wrapping_add(1)
+                .wrapping_add(value as u16);
 
             self.program_counter = jump_addr;
         }
+    }
 
+    fn bit(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
+        let and_value = self.register_a & value;
+
+        self.status.set(CpuFlags::ZERO, and_value == 0);
+        self.status.set(CpuFlags::NEGATIVE, value & 0b1000_0000 > 0);
+        self.status.set(CpuFlags::OVERFLOW, value & 0b0100_0000 > 0);
     }
 
     fn lda(&mut self, mode: &AddressingMode) {
@@ -392,8 +407,6 @@ impl CPU {
 #[cfg(test)]
 mod test {
 
-    use bitflags::Flags;
-
     use super::*;
 
     #[test]
@@ -401,15 +414,15 @@ mod test {
         let mut cpu = CPU::new();
         cpu.load_and_run(vec![0xa9, 0x05, 0x00]);
         assert_eq!(cpu.register_a, 5);
-        assert!(cpu.status.bits() & 0b0000_0010 == 0b00);
-        assert!(cpu.status.bits() & 0b1000_0000 == 0b00);
+        assert!(!cpu.status.contains(CpuFlags::ZERO));
+        assert!(!cpu.status.contains(CpuFlags::NEGATIVE));
     }
 
     #[test]
     fn test_0xa9_lda_zero_flag() {
         let mut cpu = CPU::new();
         cpu.load_and_run(vec![0xa9, 0x00, 0x00]);
-        assert!(cpu.status.bits() & 0b0000_0010 == 0b10);
+        assert!(cpu.status.contains(CpuFlags::ZERO));
     }
 
     #[test]
@@ -452,8 +465,8 @@ mod test {
         cpu.load_and_run(vec![0xa9, 0x80, 0x69, 0x80, 0x00]);
 
         assert_eq!(cpu.register_a, 0x00);
-        assert_eq!(cpu.status.bits() & 0b0100_0000, 0b0100_0000); // OVERFLOW
-        assert_eq!(cpu.status.bits() & 0b0000_0001, 0b1); // CARRY
+        assert!(cpu.status.contains(CpuFlags::OVERFLOW)); // OVERFLOW
+        assert!(cpu.status.contains(CpuFlags::CARRY)); // CARRY
     }
 
     #[test]
@@ -470,6 +483,16 @@ mod test {
         cpu.load_and_run(vec![0xa9, 0x80, 0x0a, 0x00]);
 
         assert_eq!(cpu.register_a, 0x00);
-        assert_eq!(cpu.status.bits() & 0b1, 0);
+        assert!(cpu.status.contains(CpuFlags::CARRY)); // CARRY
+    }
+
+    #[test]
+    fn test_0x24_bit_value_and_a() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0x80, 0x85, 0x10, 0x24, 0x10, 0x00]);
+
+        assert!(!cpu.status.contains(CpuFlags::ZERO));
+        assert!(cpu.status.contains(CpuFlags::NEGATIVE));
+        assert!(!cpu.status.contains(CpuFlags::OVERFLOW));
     }
 }
