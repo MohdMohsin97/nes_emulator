@@ -148,6 +148,26 @@ lazy_static! {
         OpCode::new(0x01, "ORA", 2, 6, AddressingMode::Indirect_X),
         OpCode::new(0x11, "ORA", 2, 5/*+1 if page crossed*/, AddressingMode::Indirect_Y),
 
+        OpCode::new(0x48, "PHA", 1, 3, AddressingMode::NoneAddressing),
+        OpCode::new(0x68, "PLA", 1, 4, AddressingMode::NoneAddressing),
+        OpCode::new(0x08, "PHP", 1, 3, AddressingMode::NoneAddressing),
+        OpCode::new(0x28, "PLP", 1, 4, AddressingMode::NoneAddressing),
+
+        OpCode::new(0x2a, "ROL", 1, 2, AddressingMode::NoneAddressing),
+        OpCode::new(0x26, "ROL", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0x36, "ROL", 2, 6, AddressingMode::ZeroPage_X),
+        OpCode::new(0x2e, "ROL", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0x3e, "ROL", 3, 7, AddressingMode::Absolute_X),
+
+        OpCode::new(0x6a, "ROR", 1, 2, AddressingMode::NoneAddressing),
+        OpCode::new(0x66, "ROR", 2, 5, AddressingMode::ZeroPage),
+        OpCode::new(0x76, "ROR", 2, 6, AddressingMode::ZeroPage_X),
+        OpCode::new(0x6e, "ROR", 3, 6, AddressingMode::Absolute),
+        OpCode::new(0x7e, "ROR", 3, 7, AddressingMode::Absolute_X),
+
+        OpCode::new(0x40, "RTI", 1, 6, AddressingMode::NoneAddressing),
+
+
         OpCode::new(0x85, "STA", 2, 3, AddressingMode::ZeroPage),
         OpCode::new(0x95, "STA", 2, 4, AddressingMode::ZeroPage_X),
         OpCode::new(0x8d, "STA", 3, 4, AddressingMode::Absolute),
