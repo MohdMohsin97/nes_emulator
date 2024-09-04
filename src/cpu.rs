@@ -186,10 +186,6 @@ impl CPU {
                 }
                 /* AND */
                 0x29 | 0x25 | 0x35 | 0x2d | 0x3d | 0x39 | 0x21 | 0x31 => self.and(&opcode.mode),
-                /* STA */
-                0x85 | 0x95 | 0x8d | 0x9d | 0x99 | 0x81 | 0x91 => {
-                    self.sta(&opcode.mode);
-                }
                 /* ASL */
                 0x0a => {
                     self.asl_accumulator();
@@ -352,9 +348,54 @@ impl CPU {
                 /* RTI */ 0x40 => {
                     self.rti();
                 }
-
-                0xaa => self.tax(),
-
+                /* SBC */
+                0xe9 | 0xe5 | 0xf5 | 0xed | 0xfd | 0xf9 | 0xe1 | 0xf1 => {
+                    self.sbc(&opcode.mode);
+                }
+                /* SEC */ 0x38 => self.set_carry_flag(),
+                /* SED */ 0xf8 => self.status.insert(CpuFlags::DECIMAL_MODE),
+                /* SEI */ 0x78 => self.status.insert(CpuFlags::INTERRUPT_DISABLE),
+                /* STA */
+                0x85 | 0x95 | 0x8d | 0x9d | 0x99 | 0x81 | 0x91 => {
+                    self.sta(&opcode.mode);
+                }
+                /* STX */
+                0x86 | 0x96 | 0x8e => {
+                    let addr = self.get_operand_address(&opcode.mode);
+                    self.mem_write(addr, self.register_x);
+                }
+                /* STY */
+                0x84 | 0x94 | 0x8c => {
+                    let addr = self.get_operand_address(&opcode.mode);
+                    self.mem_write(addr, self.register_y);
+                }
+                /* TAX */
+                0xaa => {
+                    self.register_x = self.register_a;
+                    self.update_zero_and_negative_flags(self.register_x)
+                }
+                /* TAY */
+                0xa8 => {
+                    self.register_y = self.register_a;
+                    self.update_zero_and_negative_flags(self.register_y);
+                }
+                /* TSX */
+                0xba => {
+                    self.register_x = self.stack_pointer;
+                    self.update_zero_and_negative_flags(self.register_x);
+                }
+                /* TXA */
+                0x8a => {
+                    self.set_register_a(self.register_x);
+                }
+                /* TXS */
+                0x9a => {
+                    self.stack_pointer = self.register_x;
+                }
+                /* TYA */
+                0x98 => {
+                    self.set_register_a(self.register_y);
+                }
                 0x00 => return,
 
                 _ => todo!(),
@@ -654,14 +695,15 @@ impl CPU {
         self.program_counter = self.stack_pop_u16();
     }
 
+    fn sbc(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        self.add_to_register_a((value as i8).wrapping_neg().wrapping_sub(1) as u8);
+    }
+
     fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(addr, self.register_a);
-    }
-
-    fn tax(&mut self) {
-        self.register_x = self.register_a;
-        self.update_zero_and_negative_flags(self.register_x)
     }
 
     fn update_zero_and_negative_flags(&mut self, result: u8) {
