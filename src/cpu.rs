@@ -1,4 +1,4 @@
-use bitflags::{bitflags, Flags};
+use bitflags::bitflags;
 use std::collections::HashMap;
 
 use crate::opcodes;
@@ -56,7 +56,7 @@ pub struct CPU {
     memory: [u8; 0xFFFF],
 }
 
-trait Mem {
+pub trait Mem {
     fn mem_read(&self, addr: u16) -> u8;
 
     fn mem_write(&mut self, addr: u16, data: u8);
@@ -161,15 +161,28 @@ impl CPU {
         self.run()
     }
 
+    // pub fn load(&mut self, program: Vec<u8>) {
+    //     self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
+    //     self.mem_write_u16(0xFFFC, 0x8000);
+    // }
+
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x8000);
+        self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
+        self.mem_write_u16(0xFFFC, 0x0600);
     }
 
     pub fn run(&mut self) {
+        self.run_with_callback(|_| {});
+    }
+
+    pub fn run_with_callback<F>(&mut self, mut callback: F)
+    where
+        F: FnMut(&mut CPU),
+    {
         let ref opcodes: HashMap<u8, &'static opcodes::OpCode> = *opcodes::OPCODES_MAP;
 
         loop {
+            callback(self);
             let code = self.mem_read(self.program_counter);
             self.program_counter += 1;
 
