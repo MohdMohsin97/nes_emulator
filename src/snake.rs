@@ -1,14 +1,9 @@
 use std::process;
 
-use bus::Bus;
-use cartridges::Rom;
-use cpu::Mem;
-use cpu::CPU;
-
-mod cpu;
-mod opcodes;
-mod bus;
-mod cartridges;
+use crate::bus::Bus;
+use crate::cartridges::Rom;
+use crate::cpu::Mem;
+use crate::cpu::CPU;
 
 use rand::Rng;
 use sdl2::event::Event;
@@ -17,7 +12,7 @@ use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
 
-fn main() {
+pub fn sanke() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
@@ -37,13 +32,12 @@ fn main() {
 
     let bytes: Vec<u8> = std::fs::read("snake.nes").unwrap();
     let rom = Rom::new(&bytes).unwrap();
-    
+
     let bus = Bus::new(rom);
-    
+
     let mut cpu = CPU::new(bus);
     cpu.reset();
-    
-    
+
     fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
         for event in event_pump.poll_iter() {
             match event {
@@ -124,7 +118,7 @@ fn main() {
             canvas.copy(&texture, None, None).unwrap();
             canvas.present();
 
-            std::thread::sleep(std::time::Duration::new(0, 70_000));
+            std::thread::sleep(std::time::Duration::new(0, 7_000_000));
         }
     });
 }

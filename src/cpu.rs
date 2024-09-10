@@ -164,29 +164,21 @@ impl CPU {
         self.stack_pointer = STACK_RESET;
         self.status = CpuFlags::from_bits_truncate(0b100100);
 
-        // self.program_counter = self.mem_read_u16(0xFFFC);
-        self.program_counter = 0x0600;
+        self.program_counter = self.mem_read_u16(0xFFFC);
+        
     }
 
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
         self.reset();
+        self.program_counter = 0x0600;
         self.run()
     }
 
-    // pub fn load(&mut self, program: Vec<u8>) {
-    //     self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-    //     self.mem_write_u16(0xFFFC, 0x8000);
-    // }
-
     pub fn load(&mut self, program: Vec<u8>) {
-        // self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
-
         for i in 0..(program.len() as u16) {
             self.mem_write(0x0600 + i, program[i as usize]);
         }
-
-        // self.mem_write_u16(0xFFFC, 0x0600);
     }
 
     pub fn run(&mut self) {
@@ -198,7 +190,6 @@ impl CPU {
         F: FnMut(&mut CPU),
     {
         let ref opcodes: HashMap<u8, &'static opcodes::OpCode> = *opcodes::OPCODES_MAP;
-
         loop {
             callback(self);
             let code = self.mem_read(self.program_counter);
