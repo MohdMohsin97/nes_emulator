@@ -1,7 +1,7 @@
 use std::process;
 
 use crate::bus::Bus;
-use crate::cartridges::Rom;
+use crate::cartridge::Rom;
 use crate::cpu::Mem;
 use crate::cpu::CPU;
 

@@ -812,7 +812,7 @@ impl CPU {
 #[cfg(test)]
 mod test {
 
-    use crate::cartridges::test;
+    use crate::cartridge::test;
 
     use super::*;
 
